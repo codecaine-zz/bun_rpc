@@ -1,0 +1,69 @@
+<!-- ── client.html ──
+   Open this file in a browser, or load it from NeutralinoJS.
+   No build step, no npm, just plain HTML & JavaScript.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bun RPC Demo (Beginners)</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    pre { background:#f4f4f4; padding:1rem; }
+  </style>
+</head>
+<body>
+  <h1>Bun RPC Demo</h1>
+  <button id="run">Run demo</button>
+  <pre id="out"></pre>
+
+  <script>
+    // -------------------------------------------------
+    // 1️⃣  Tiny wrapper – every property becomes an RPC call
+    // -------------------------------------------------
+    function createRpcClient(baseUrl) {
+      async function callRemote(method, args) {
+        const resp = await fetch(baseUrl + "/rpc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method, args })
+        });
+
+        const data = await resp.json();      // {result} or {error}
+        if (data.error) throw new Error(data.error);
+        return data.result;
+      }
+
+      // Proxy so `api.add(1,2)` automatically routes to the server
+      return new Proxy({}, {
+        get(_, prop) {
+          return (...args) => callRemote(prop, args);
+        }
+      });
+    }
+
+    // -------------------------------------------------
+    // 2️⃣  Use the wrapper
+    // -------------------------------------------------
+    const api = createRpcClient(window.location.origin); // Use the current page's origin
+
+    document.getElementById("run").addEventListener("click", async () => {
+      const out = document.getElementById("out");
+      out.textContent = "Running…\n";
+
+      try {
+        const sum = await api.add(7, 5);               // → 12
+        out.textContent += `add(7,5) = ${sum}\n`;
+
+        const hello = await api.greet("Alice");        // → "Hello, Alice!"
+        out.textContent += `greet("Alice") = ${hello}\n`;
+
+        const colour = await api.randomColour();       // async example
+        out.textContent += `randomColour() = ${colour}\n`;
+      } catch (e) {
+        out.textContent += `❌ ${e.message}\n`;
+      }
+    });
+  </script>
+</body>
+</html>
