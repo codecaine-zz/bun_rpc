@@ -15,6 +15,7 @@
 <body>
   <h1>Bun RPC Demo</h1>
   <button id="run">Run demo</button>
+  <button id="discover">Discover API</button>
   <pre id="out"></pre>
 
   <script>
@@ -43,7 +44,16 @@
     }
 
     // -------------------------------------------------
-    // 2️⃣  Use the wrapper
+    // 2️⃣  Optional: Discover available API methods
+    // -------------------------------------------------
+    async function discoverApi(baseUrl) {
+      const resp = await fetch(baseUrl + "/rpc/methods");
+      const data = await resp.json();
+      return data.methods;
+    }
+
+    // -------------------------------------------------
+    // 3️⃣  Use the wrapper
     // -------------------------------------------------
     const api = createRpcClient(window.location.origin); // Use the current page's origin
 
@@ -60,6 +70,21 @@
 
         const colour = await api.randomColour();       // async example
         out.textContent += `randomColour() = ${colour}\n`;
+      } catch (e) {
+        out.textContent += `❌ ${e.message}\n`;
+      }
+    });
+
+    document.getElementById("discover").addEventListener("click", async () => {
+      const out = document.getElementById("out");
+      out.textContent = "Discovering API methods…\n";
+
+      try {
+        const methods = await discoverApi(window.location.origin);
+        out.textContent += `Available methods:\n`;
+        methods.forEach(m => {
+          out.textContent += `  - ${m.name} (${m.type})\n`;
+        });
       } catch (e) {
         out.textContent += `❌ ${e.message}\n`;
       }
