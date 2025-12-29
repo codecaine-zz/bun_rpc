@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redis Demo - Bun RPC</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      background: #f2f2f7;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      background: linear-gradient(135deg, #DC143C 0%, #8B0000 100%);
+      padding: 60px 24px 24px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      color: white;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .subtitle {
+      font-size: 17px;
+      opacity: 0.9;
+      font-weight: 500;
+    }
+    .stats {
+      display: flex;
+      gap: 24px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .stat {
+      background: rgba(255,255,255,0.15);
+      padding: 12px 20px;
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      padding-bottom: 4px;
+    }
+    .tab {
+      background: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      color: #666;
+      flex-shrink: 0;
+    }
+    .tab.active {
+      background: #DC143C;
+      color: white;
+    }
+    .tab:hover:not(.active) {
+      background: #f8f8f8;
+    }
+    .panel {
+      display: none;
+      animation: fadeIn 0.3s;
+    }
+    .panel.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .card h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1d1d1f;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #1d1d1f;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e5e5ea;
+      border-radius: 10px;
+      font-size: 16px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #DC143C;
+    }
+    button {
+      background: #DC143C;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    button:hover {
+      background: #B00020;
+      transform: scale(0.98);
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    button.secondary {
+      background: #f2f2f7;
+      color: #1d1d1f;
+    }
+    button.secondary:hover {
+      background: #e5e5ea;
+    }
+    .result {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .result.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .result.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .result pre {
+      margin-top: 8px;
+      padding: 12px;
+      background: rgba(0,0,0,0.05);
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+    .session-list, .settings-list {
+      margin-top: 16px;
+    }
+    .session-item, .setting-item {
+      padding: 12px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .session-info, .setting-info {
+      flex: 1;
+    }
+    .session-name, .setting-key {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .session-meta, .setting-value {
+      font-size: 13px;
+      color: #666;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #DC143C;
+      color: white;
+      margin-left: 8px;
+    }
+    .badge.success {
+      background: #28a745;
+    }
+    .badge.warning {
+      background: #ffc107;
+      color: #000;
+    }
+    .counters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .counter-box {
+      padding: 16px;
+      background: linear-gradient(135deg, #DC143C 0%, #8B0000 100%);
+      color: white;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .counter-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .counter-label {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .btn-group button {
+      flex: 1;
+    }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>
+        <span>🗄️</span>
+        Redis Demo
+      </h1>
+      <div class="subtitle">Production-ready Redis operations with Bun Redis Wrapper</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value" id="total-keys">-</div>
+          <div class="stat-label">Total Keys</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="cache-hit-rate">-</div>
+          <div class="stat-label">Cache Hit Rate</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="page-views">-</div>
+          <div class="stat-label">Page Views</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="api-calls">-</div>
+          <div class="stat-label">API Calls</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="sessions">🔐 Sessions</button>
+      <button class="tab" data-tab="caching">⚡ Caching</button>
+      <button class="tab" data-tab="ratelimit">🚦 Rate Limiting</button>
+      <button class="tab" data-tab="leaderboard">🏆 Leaderboard</button>
+      <button class="tab" data-tab="analytics">📈 Analytics</button>
+      <button class="tab" data-tab="geospatial">🗺️ Locations</button>
+      <button class="tab" data-tab="events">📝 Event Log</button>
+      <button class="tab" data-tab="counters">📊 Counters</button>
+      <button class="tab" data-tab="storage">💾 Storage</button>
+      <button class="tab" data-tab="admin">⚙️ Admin</button>
+    </div>
+
+    <!-- Sessions Panel -->
+    <div class="panel active" id="sessions-panel">
+      <div class="grid">
+        <div class="card">
+          <h3>🎫 Create Session</h3>
+          <div class="form-group">
+            <label>User</label>
+            <select id="session-user">
+              <option value="1|Alice Johnson|alice@example.com|admin">Alice Johnson (Admin)</option>
+              <option value="2|Bob Smith|bob@example.com|user">Bob Smith (User)</option>
+              <option value="3|Charlie Brown|charlie@example.com|user">Charlie Brown (User)</option>
+            </select>
+          </div>
+          <button onclick="createSession()">Create Session</button>
+          <div id="create-session-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>🔍 Validate Session</h3>
+          <div class="form-group">
+            <label>Session ID</label>
+            <input type="text" id="validate-session-id" placeholder="Enter session ID">
+          </div>
+          <div class="btn-group">
+            <button onclick="validateSession()">Validate</button>
+            <button class="secondary" onclick="extendSession()">Extend TTL</button>
+            <button class="secondary" onclick="destroySession()">Destroy</button>
+          </div>
+          <div id="validate-session-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>📋 Active Sessions</h3>
+          <div class="form-group">
+            <label>User ID</label>
+            <input type="text" id="list-user-id" value="1" placeholder="Enter user ID">
+          </div>
+          <button onclick="listUserSessions()">List Sessions</button>
+          <div id="list-sessions-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Caching Panel -->
+    <div class="panel" id="caching-panel">
+      <div class="grid">
+        <div class="card">
+          <h3>👤 Get User (Cached)</h3>
+          <div class="form-group">
+            <label>User ID</label>
+            <select id="cache-user-id">
+              <option value="1">User 1 - Alice Johnson</option>
+              <option value="2">User 2 - Bob Smith</option>
+              <option value="3">User 3 - Charlie Brown</option>
+            </select>
+          </div>
+          <button onclick="getUserCached()">Get User</button>
+          <div id="cache-user-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>🗑️ Cache Management</h3>
+          <div class="form-group">
+            <label>User ID to Invalidate</label>
+            <input type="text" id="invalidate-user-id" value="1" placeholder="Enter user ID">
+          </div>
+          <button onclick="invalidateCache()">Invalidate Cache</button>
+          <button class="secondary" onclick="clearCache()" style="margin-top: 8px;">Clear All Cache</button>
+          <div id="cache-mgmt-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>📈 Cache Statistics</h3>
+          <button onclick="getCacheStats()">Refresh Stats</button>
+          <div id="cache-stats-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rate Limiting Panel -->
+    <div class="panel" id="ratelimit-panel">
+      <div class="grid">
+        <div class="card">
+          <h3>🚦 Check Rate Limit</h3>
+          <div class="form-group">
+            <label>User ID</label>
+            <input type="text" id="ratelimit-user-id" value="user-123" placeholder="Enter user ID">
+          </div>
+          <div class="form-group">
+            <label>Endpoint</label>
+            <input type="text" id="ratelimit-endpoint" value="api/users" placeholder="Enter endpoint">
+          </div>
+          <button onclick="checkRateLimit()">Check Limit (10 req/min)</button>
+          <button class="secondary" onclick="resetRateLimit()" style="margin-top: 8px;">Reset Limit</button>
+          <div id="ratelimit-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>🔥 Spam Test</h3>
+          <p style="color: #666; margin-bottom: 16px; font-size: 14px;">
+            Click rapidly to test rate limiting (10 requests per minute)
+          </p>
+          <button onclick="spamTest()">Send Request</button>
+          <div id="spam-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Counters Panel -->
+    <div class="panel" id="counters-panel">
+      <div class="card">
+        <h3>📊 Application Counters</h3>
+        <button onclick="loadCounters()">Refresh Counters</button>
+        <div class="counters-grid" id="counters-display"></div>
+      </div>
+
+      <div class="grid" style="margin-top: 20px;">
+        <div class="card">
+          <h3>➕ Increment Counter</h3>
+          <div class="form-group">
+            <label>Counter Name</label>
+            <input type="text" id="inc-counter-name" placeholder="e.g., api_calls">
+          </div>
+          <div class="form-group">
+            <label>Amount</label>
+            <input type="number" id="inc-counter-amount" value="1">
+          </div>
+          <button onclick="incrementCounter()">Increment</button>
+          <div id="inc-counter-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>➖ Decrement Counter</h3>
+          <div class="form-group">
+            <label>Counter Name</label>
+            <input type="text" id="dec-counter-name" placeholder="e.g., api_calls">
+          </div>
+          <div class="form-group">
+            <label>Amount</label>
+            <input type="number" id="dec-counter-amount" value="1">
+          </div>
+          <button onclick="decrementCounter()">Decrement</button>
+          <div id="dec-counter-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard Panel -->
+    <div class="panel" id="leaderboard-panel">
+      <div class="grid">
+        <div class="card">
+          <h3>🎮 Add Score</h3>
+          <div class="form-group">
+            <label>Board Name</label>
+            <input type="text" id="lb-board" value="game-highscores" placeholder="e.g., game-highscores">
+          </div>
+          <div class="form-group">
+            <label>Player Name</label>
+            <input type="text" id="lb-player" placeholder="e.g., Alice">
+          </div>
+          <div class="form-group">
+            <label>Score</label>
+            <input type="number" id="lb-score" value="1000" placeholder="e.g., 1000">
+          </div>
+          <button onclick="addScore()">Add Score</button>
+          <button class="secondary" onclick="incrementScore()" style="margin-top: 8px;">Increment Score (+100)</button>
+          <div id="lb-add-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>🏆 Top Players</h3>
+          <div class="form-group">
+            <label>Board Name</label>
+            <input type="text" id="lb-board-view" value="game-highscores" placeholder="e.g., game-highscores">
+          </div>
+          <div class="form-group">
+            <label>Top N</label>
+            <input type="number" id="lb-top-count" value="10" placeholder="Number of players">
+          </div>
+          <button onclick="getTopPlayers()">View Leaderboard</button>
+          <div id="lb-top-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>👤 Player Info</h3>
+          <div class="form-group">
+            <label>Board Name</label>
+            <input type="text" id="lb-board-player" value="game-highscores">
+          </div>
+          <div class="form-group">
+            <label>Player Name</label>
+            <input type="text" id="lb-player-info" placeholder="e.g., Alice">
+          </div>
+          <button onclick="getPlayerInfo()">Get Player Info</button>
+          <button class="secondary" onclick="getPlayersAround()" style="margin-top: 8px;">Players Around (±3)</button>
+          <button class="secondary" onclick="getLeaderboardStats()" style="margin-top: 8px;">Leaderboard Stats</button>
+          <div id="lb-player-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics Panel -->
+    <div class="panel" id="analytics-panel">
+      <div class="grid">
+        <div class="card">
+          <h3>📊 Track Events</h3>
+          <div class="form-group">
+            <label>Page URL</label>
+            <input type="text" id="analytics-page" value="/home" placeholder="e.g., /home">
+          </div>
+          <div class="form-group">
+            <label>User ID</label>
+            <input type="text" id="analytics-user" placeholder="e.g., user-123">
+          </div>
+          <button onclick="trackPageView()">Track Page View</button>
+          <button class="secondary" onclick="trackDAU()" style="margin-top: 8px;">Track DAU</button>
+          <div id="analytics-track-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>👥 Unique Visitors</h3>
+          <div class="form-group">
+            <label>Page URL</label>
+            <input type="text" id="analytics-page-view" value="/home">
+          </div>
+          <button onclick="getUniqueVisitors()">Get Unique Visitors</button>
+          <div id="analytics-visitors-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>📈 Daily Metrics</h3>
+          <button onclick="getDAU()">Get Today's DAU</button>
+          <button class="secondary" onclick="getAnalyticsSummary()" style="margin-top: 8px;">Get Summary</button>
+          <div id="analytics-metrics-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Geospatial Panel -->
+    <div class="panel" id="geospatial-panel">
+      <div class="grid">
+        <div class="card">
+          <h3>📍 Add Location</h3>
+          <div class="form-group">
+            <label>Set Name</label>
+            <input type="text" id="geo-set" value="stores" placeholder="e.g., stores">
+          </div>
+          <div class="form-group">
+            <label>Location Name</label>
+            <input type="text" id="geo-name" placeholder="e.g., SF-Downtown">
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" step="0.0001" id="geo-lng" value="-122.4194" placeholder="-122.4194">
+          </div>
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" step="0.0001" id="geo-lat" value="37.7749" placeholder="37.7749">
+          </div>
+          <button onclick="addLocation()">Add Location</button>
+          <div id="geo-add-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>🔍 Find Nearby</h3>
+          <div class="form-group">
+            <label>Set Name</label>
+            <input type="text" id="geo-set-search" value="stores">
+          </div>
+          <div class="form-group">
+            <label>Center (Lng, Lat)</label>
+            <input type="text" id="geo-center" value="-122.4194, 37.7749" placeholder="-122.4194, 37.7749">
+          </div>
+          <div class="form-group">
+            <label>Radius</label>
+            <input type="number" id="geo-radius" value="5" placeholder="5">
+            <select id="geo-unit" style="margin-top: 8px;">
+              <option value="km">Kilometers</option>
+              <option value="mi">Miles</option>
+            </select>
+          </div>
+          <button onclick="findNearby()">Find Nearby</button>
+          <div id="geo-nearby-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>📏 Distance Calculator</h3>
+          <div class="form-group">
+            <label>Set Name</label>
+            <input type="text" id="geo-set-dist" value="stores">
+          </div>
+          <div class="form-group">
+            <label>Location 1</label>
+            <input type="text" id="geo-loc1" placeholder="e.g., SF-Downtown">
+          </div>
+          <div class="form-group">
+            <label>Location 2</label>
+            <input type="text" id="geo-loc2" placeholder="e.g., SF-Marina">
+          </div>
+          <button onclick="getDistance()">Calculate Distance</button>
+          <button class="secondary" onclick="getLocationCoordinates()" style="margin-top: 8px;">Get Coordinates</button>
+          <div id="geo-dist-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Events Panel -->
+    <div class="panel" id="events-panel">
+      <div class="grid">
+        <div class="card">
+          <h3>📝 Log Event</h3>
+          <div class="form-group">
+            <label>Stream Name</label>
+            <input type="text" id="event-stream" value="user-activity" placeholder="e.g., user-activity">
+          </div>
+          <div class="form-group">
+            <label>Event Type</label>
+            <input type="text" id="event-type" placeholder="e.g., login">
+          </div>
+          <div class="form-group">
+            <label>User ID</label>
+            <input type="text" id="event-user" placeholder="e.g., user-123">
+          </div>
+          <div class="form-group">
+            <label>Extra Data (JSON)</label>
+            <input type="text" id="event-data" placeholder='{"action": "login"}'>
+          </div>
+          <button onclick="logEvent()">Log Event</button>
+          <div id="event-log-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>📜 View Events</h3>
+          <div class="form-group">
+            <label>Stream Name</label>
+            <input type="text" id="event-stream-view" value="user-activity">
+          </div>
+          <div class="form-group">
+            <label>Count</label>
+            <input type="number" id="event-count" value="10">
+          </div>
+          <button onclick="getRecentEvents()">Get Recent Events</button>
+          <button class="secondary" onclick="getEventCount()" style="margin-top: 8px;">Get Event Count</button>
+          <div id="event-view-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Storage Panel -->
+    <div class="panel" id="storage-panel">
+      <div class="grid">
+        <div class="card">
+          <h3>💾 Save Setting</h3>
+          <div class="form-group">
+            <label>Key</label>
+            <input type="text" id="setting-key" placeholder="e.g., theme">
+          </div>
+          <div class="form-group">
+            <label>Value</label>
+            <input type="text" id="setting-value" placeholder="e.g., dark">
+          </div>
+          <div class="form-group">
+            <label>TTL (seconds, optional)</label>
+            <input type="number" id="setting-ttl" placeholder="Leave empty for no expiration">
+          </div>
+          <button onclick="saveSetting()">Save Setting</button>
+          <div id="save-setting-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>🔍 Get Setting</h3>
+          <div class="form-group">
+            <label>Key</label>
+            <input type="text" id="get-setting-key" placeholder="e.g., theme">
+          </div>
+          <button onclick="getSetting()">Get Setting</button>
+          <button class="secondary" onclick="deleteSetting()" style="margin-top: 8px;">Delete Setting</button>
+          <div id="get-setting-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>📋 All Settings</h3>
+          <button onclick="listSettings()">List All Settings</button>
+          <div id="list-settings-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div class="panel" id="admin-panel">
+      <div class="grid">
+        <div class="card">
+          <h3>📊 Redis Statistics</h3>
+          <button onclick="loadRedisStats()">Refresh Stats</button>
+          <div id="redis-stats-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>🔌 Connection Test</h3>
+          <button onclick="pingRedis()">Ping Redis</button>
+          <div id="ping-result"></div>
+        </div>
+
+        <div class="card">
+          <h3>⚡ Quick Actions</h3>
+          <button onclick="initDemoData()">Initialize Demo Data</button>
+          <button class="secondary" onclick="clearAllData()" style="margin-top: 8px; background: #ff3b30; color: white;">Clear All Data</button>
+          <div id="quick-actions-result"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // RPC Client using HTTP fetch
+    function createRpcClient(baseUrl) {
+      async function callRemote(method, args) {
+        const resp = await fetch(baseUrl + "/rpc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method, args })
+        });
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+        return data.result;
+      }
+      return new Proxy({}, {
+        get(_, prop) {
+          return (...args) => callRemote(prop, args);
+        }
+      });
+    }
+
+    const api = createRpcClient(window.location.origin);
+
+    async function call(method, ...params) {
+      console.log(`📞 Calling ${method} with params:`, params);
+      try {
+        const result = await api[method](...params);
+        console.log(`✅ Result from ${method}:`, result);
+        return result;
+      } catch (error) {
+        console.error(`❌ Error calling ${method}:`, error);
+        throw error;
+      }
+    }
+
+    // Initialize on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('✅ Connected to Redis Demo Server');
+      loadStats();
+      loadCounters();
+    });
+
+    // Tab Switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab + '-panel').classList.add('active');
+      });
+    });
+
+    // Helper Functions
+    function showResult(elementId, result, isError = false) {
+      const el = document.getElementById(elementId);
+      el.className = `result ${isError ? 'error' : 'success'}`;
+      if (typeof result === 'object') {
+        el.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+      } else {
+        el.textContent = result;
+      }
+    }
+
+    // Stats Updates
+    async function loadStats() {
+      const stats = await call('getRedisStats');
+      if (stats.success) {
+        document.getElementById('total-keys').textContent = stats.stats.totalKeys;
+        document.getElementById('cache-hit-rate').textContent = stats.stats.cache.hitRate.toFixed(1) + '%';
+        document.getElementById('page-views').textContent = stats.stats.counters.page_views || 0;
+        document.getElementById('api-calls').textContent = stats.stats.counters.api_calls || 0;
+      }
+    }
+
+    // Session Functions
+    async function createSession() {
+      const select = document.getElementById('session-user');
+      const [userId, username, email, role] = select.value.split('|');
+      const result = await call('createSession', userId, username, email, role);
+      showResult('create-session-result', result);
+      document.getElementById('validate-session-id').value = result.sessionId;
+      loadStats();
+    }
+
+    async function validateSession() {
+      const sessionId = document.getElementById('validate-session-id').value;
+      const result = await call('getSession', sessionId);
+      showResult('validate-session-result', result, !result.success);
+    }
+
+    async function extendSession() {
+      const sessionId = document.getElementById('validate-session-id').value;
+      const result = await call('extendSession', sessionId);
+      showResult('validate-session-result', result, !result.success);
+    }
+
+    async function destroySession() {
+      const sessionId = document.getElementById('validate-session-id').value;
+      const result = await call('destroySession', sessionId);
+      showResult('validate-session-result', result, !result.success);
+      loadStats();
+    }
+
+    async function listUserSessions() {
+      const userId = document.getElementById('list-user-id').value;
+      const result = await call('getUserSessions', userId);
+      showResult('list-sessions-result', result);
+    }
+
+    // Cache Functions
+    async function getUserCached() {
+      const userId = document.getElementById('cache-user-id').value;
+      const result = await call('getUserCached', userId);
+      showResult('cache-user-result', result);
+      loadStats();
+    }
+
+    async function invalidateCache() {
+      const userId = document.getElementById('invalidate-user-id').value;
+      const result = await call('invalidateUserCache', userId);
+      showResult('cache-mgmt-result', result);
+    }
+
+    async function clearCache() {
+      const result = await call('clearCache');
+      showResult('cache-mgmt-result', result);
+      loadStats();
+    }
+
+    async function getCacheStats() {
+      const result = await call('getCacheStats');
+      showResult('cache-stats-result', result);
+    }
+
+    // Rate Limit Functions
+    async function checkRateLimit() {
+      const userId = document.getElementById('ratelimit-user-id').value;
+      const endpoint = document.getElementById('ratelimit-endpoint').value;
+      const result = await call('checkRateLimit', userId, endpoint);
+      showResult('ratelimit-result', result, !result.allowed);
+    }
+
+    async function resetRateLimit() {
+      const userId = document.getElementById('ratelimit-user-id').value;
+      const endpoint = document.getElementById('ratelimit-endpoint').value;
+      const result = await call('resetRateLimit', userId, endpoint);
+      showResult('ratelimit-result', result);
+    }
+
+    let spamCount = 0;
+    async function spamTest() {
+      spamCount++;
+      const result = await call('checkRateLimit', 'spam-test', 'spam');
+      showResult('spam-result', {
+        attempt: spamCount,
+        ...result
+      }, !result.allowed);
+      if (result.allowed) {
+        setTimeout(spamTest, 100);
+      }
+    }
+
+    // Counter Functions
+    async function loadCounters() {
+      const result = await call('getCounters');
+      if (result.success) {
+        const display = document.getElementById('counters-display');
+        display.innerHTML = Object.entries(result.counters)
+          .map(([key, value]) => `
+            <div class="counter-box">
+              <div class="counter-value">${value || 0}</div>
+              <div class="counter-label">${key.replace(/_/g, ' ')}</div>
+            </div>
+          `).join('');
+      }
+    }
+
+    async function incrementCounter() {
+      const name = document.getElementById('inc-counter-name').value;
+      const amount = parseInt(document.getElementById('inc-counter-amount').value);
+      const result = await call('incrementCounter', name, amount);
+      showResult('inc-counter-result', result);
+      loadCounters();
+      loadStats();
+    }
+
+    async function decrementCounter() {
+      const name = document.getElementById('dec-counter-name').value;
+      const amount = parseInt(document.getElementById('dec-counter-amount').value);
+      const result = await call('decrementCounter', name, amount);
+      showResult('dec-counter-result', result);
+      loadCounters();
+      loadStats();
+    }
+
+    // Storage Functions
+    async function saveSetting() {
+      try {
+        const key = document.getElementById('setting-key').value;
+        const value = document.getElementById('setting-value').value;
+        const ttl = document.getElementById('setting-ttl').value;
+        const result = await call('saveSetting', key, value, ttl ? parseInt(ttl) : undefined);
+        showResult('save-setting-result', result);
+      } catch (error) {
+        showResult('save-setting-result', { error: error.message }, true);
+      }
+    }
+
+    async function getSetting() {
+      try {
+        const key = document.getElementById('get-setting-key').value;
+        const result = await call('getSetting', key);
+        showResult('get-setting-result', result, !result.success);
+      } catch (error) {
+        showResult('get-setting-result', { error: error.message }, true);
+      }
+    }
+
+    async function deleteSetting() {
+      try {
+        const key = document.getElementById('get-setting-key').value;
+        const result = await call('deleteSetting', key);
+        showResult('get-setting-result', result);
+      } catch (error) {
+        showResult('get-setting-result', { error: error.message }, true);
+      }
+    }
+
+    async function listSettings() {
+      try {
+        const result = await call('listSettings');
+        showResult('list-settings-result', result);
+      } catch (error) {
+        showResult('list-settings-result', { error: error.message }, true);
+      }
+    }
+
+    // Admin Functions
+    async function loadRedisStats() {
+      const result = await call('getRedisStats');
+      showResult('redis-stats-result', result);
+    }
+
+    async function pingRedis() {
+      const result = await call('ping');
+      showResult('ping-result', result, !result.success);
+    }
+
+    async function initDemoData() {
+      const result = await call('initDemoData');
+      showResult('quick-actions-result', result);
+      loadStats();
+      loadCounters();
+    }
+
+    async function clearAllData() {
+      if (!confirm('Are you sure you want to clear all Redis data?')) return;
+      const result = await call('clearAllData');
+      showResult('quick-actions-result', result);
+      loadStats();
+      loadCounters();
+    }
+
+    // Auto-refresh stats every 5 seconds
+    setInterval(loadStats, 5000);
+
+    // Leaderboard Functions
+    async function addScore() {
+      const board = document.getElementById('lb-board').value;
+      const player = document.getElementById('lb-player').value;
+      const score = parseInt(document.getElementById('lb-score').value);
+      const result = await call('addScore', board, player, score);
+      showResult('lb-add-result', result);
+    }
+
+    async function incrementScore() {
+      const board = document.getElementById('lb-board').value;
+      const player = document.getElementById('lb-player').value;
+      const result = await call('incrementScore', board, player, 100);
+      showResult('lb-add-result', result);
+    }
+
+    async function getTopPlayers() {
+      const board = document.getElementById('lb-board-view').value;
+      const count = parseInt(document.getElementById('lb-top-count').value);
+      const result = await call('getTopPlayers', board, count);
+      showResult('lb-top-result', result);
+    }
+
+    async function getPlayerInfo() {
+      const board = document.getElementById('lb-board-player').value;
+      const player = document.getElementById('lb-player-info').value;
+      const result = await call('getPlayerInfo', board, player);
+      showResult('lb-player-result', result, !result.success);
+    }
+
+    async function getPlayersAround() {
+      const board = document.getElementById('lb-board-player').value;
+      const player = document.getElementById('lb-player-info').value;
+      const result = await call('getPlayersAround', board, player, 3);
+      showResult('lb-player-result', result);
+    }
+
+    async function getLeaderboardStats() {
+      const board = document.getElementById('lb-board-player').value;
+      const result = await call('getLeaderboardStats', board);
+      showResult('lb-player-result', result);
+    }
+
+    // Analytics Functions
+    async function trackPageView() {
+      const page = document.getElementById('analytics-page').value;
+      const user = document.getElementById('analytics-user').value;
+      const result = await call('trackPageView', page, user);
+      showResult('analytics-track-result', result);
+    }
+
+    async function trackDAU() {
+      const user = document.getElementById('analytics-user').value;
+      const result = await call('trackDAU', user);
+      showResult('analytics-track-result', result);
+    }
+
+    async function getUniqueVisitors() {
+      const page = document.getElementById('analytics-page-view').value;
+      const result = await call('getUniqueVisitors', page);
+      showResult('analytics-visitors-result', result);
+    }
+
+    async function getDAU() {
+      const result = await call('getDAU');
+      showResult('analytics-metrics-result', result);
+    }
+
+    async function getAnalyticsSummary() {
+      const result = await call('getAnalyticsSummary');
+      showResult('analytics-metrics-result', result);
+    }
+
+    // Geospatial Functions
+    async function addLocation() {
+      const setName = document.getElementById('geo-set').value;
+      const name = document.getElementById('geo-name').value;
+      const lng = parseFloat(document.getElementById('geo-lng').value);
+      const lat = parseFloat(document.getElementById('geo-lat').value);
+      const result = await call('addLocation', setName, name, lng, lat);
+      showResult('geo-add-result', result);
+    }
+
+    async function findNearby() {
+      const setName = document.getElementById('geo-set-search').value;
+      const center = document.getElementById('geo-center').value.split(',').map(s => parseFloat(s.trim()));
+      const radius = parseFloat(document.getElementById('geo-radius').value);
+      const unit = document.getElementById('geo-unit').value;
+      const result = await call('findNearbyLocations', setName, center[0], center[1], radius, unit);
+      showResult('geo-nearby-result', result);
+    }
+
+    async function getDistance() {
+      const setName = document.getElementById('geo-set-dist').value;
+      const loc1 = document.getElementById('geo-loc1').value;
+      const loc2 = document.getElementById('geo-loc2').value;
+      const unit = document.getElementById('geo-unit').value;
+      const result = await call('getDistance', setName, loc1, loc2, unit);
+      showResult('geo-dist-result', result, !result.success);
+    }
+
+    async function getLocationCoordinates() {
+      const setName = document.getElementById('geo-set-dist').value;
+      const loc1 = document.getElementById('geo-loc1').value;
+      const result = await call('getLocationCoordinates', setName, loc1);
+      showResult('geo-dist-result', result, !result.success);
+    }
+
+    // Event Functions
+    async function logEvent() {
+      try {
+        const stream = document.getElementById('event-stream').value;
+        const type = document.getElementById('event-type').value;
+        const user = document.getElementById('event-user').value;
+        const dataStr = document.getElementById('event-data').value;
+        const data = dataStr ? JSON.parse(dataStr) : {};
+        const result = await call('logEvent', stream, type, user, data);
+        showResult('event-log-result', result);
+      } catch (error) {
+        showResult('event-log-result', { error: error.message }, true);
+      }
+    }
+
+    async function getRecentEvents() {
+      const stream = document.getElementById('event-stream-view').value;
+      const count = parseInt(document.getElementById('event-count').value);
+      const result = await call('getRecentEvents', stream, count);
+      showResult('event-view-result', result);
+    }
+
+    async function getEventCount() {
+      const stream = document.getElementById('event-stream-view').value;
+      const result = await call('getEventCount', stream);
+      showResult('event-view-result', result);
+    }
+  </script>
+</body>
+</html>
