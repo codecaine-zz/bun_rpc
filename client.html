@@ -6,17 +6,101 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Bun RPC Demo (Beginners)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bun RPC Demo</title>
   <style>
-    body { font-family: sans-serif; padding: 2rem; }
-    pre { background:#f4f4f4; padding:1rem; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      background: #f2f2f7;
+      min-height: 100vh;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .header {
+      background: linear-gradient(180deg, #007AFF 0%, #0051D5 100%);
+      padding: 60px 24px 24px;
+      color: white;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 15px;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+    .content {
+      padding: 24px;
+    }
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    button {
+      flex: 1;
+      background: #007AFF;
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:hover {
+      background: #0051D5;
+      transform: scale(0.98);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    pre {
+      background: #f2f2f7;
+      padding: 16px;
+      border-radius: 12px;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-x: auto;
+      color: #1d1d1f;
+      border: 1px solid #e5e5ea;
+    }
   </style>
 </head>
 <body>
-  <h1>Bun RPC Demo</h1>
-  <button id="run">Run demo</button>
-  <button id="discover">Discover API</button>
-  <pre id="out"></pre>
+  <div class="container">
+    <div class="header">
+      <h1>Bun RPC Demo</h1>
+      <div class="subtitle">Simple remote procedure calls</div>
+    </div>
+    <div class="content">
+      <div class="button-group">
+        <button id="run">Run Demo</button>
+        <button id="discover">Discover API</button>
+      </div>
+      <pre id="out">Ready to run...</pre>
+    </div>
+  </div>
 
   <script>
     // -------------------------------------------------
@@ -77,13 +161,28 @@
 
     document.getElementById("discover").addEventListener("click", async () => {
       const out = document.getElementById("out");
-      out.textContent = "Discovering API methods…\n";
+      out.textContent = "Discovering API methods…\n\n";
 
       try {
         const methods = await discoverApi(window.location.origin);
-        out.textContent += `Available methods:\n`;
+        out.textContent += `Available methods:\n\n`;
         methods.forEach(m => {
-          out.textContent += `  - ${m.name} (${m.type})\n`;
+          // Format parameters with types
+          const params = m.params && m.params.length > 0 
+            ? m.params.map(p => p.type ? `${p.name}: ${p.type}` : p.name).join(', ')
+            : '';
+          
+          // Format return type
+          const returnType = m.returnType ? `: ${m.returnType}` : '';
+          
+          // Show method signature
+          out.textContent += `  ${m.name}(${params})${returnType}\n`;
+          
+          // Show description if available
+          if (m.description) {
+            out.textContent += `    ↳ ${m.description}\n`;
+          }
+          out.textContent += '\n';
         });
       } catch (e) {
         out.textContent += `❌ ${e.message}\n`;

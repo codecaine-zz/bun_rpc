@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UUID & Random Generator - Bun RPC</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      background: #f2f2f7;
+      min-height: 100vh;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 60px 24px 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 24px;
+      color: #1d1d1f;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+      margin-top: 24px;
+    }
+    .card {
+      background: #f2f2f7;
+      padding: 20px;
+      border-radius: 16px;
+    }
+    .card h3 {
+      margin-top: 0;
+      color: #1d1d1f;
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    button {
+      background: #007AFF;
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      margin: 8px 8px 8px 0;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:hover {
+      background: #0051D5;
+      transform: scale(0.98);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    button.full {
+      width: 100%;
+    }
+    input, select {
+      padding: 14px;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      font-size: 17px;
+      width: 100%;
+      box-sizing: border-box;
+      margin: 8px 0;
+      background: white;
+      font-family: inherit;
+    }
+    pre {
+      background: #1d1d1f;
+      color: #f2f2f7;
+      padding: 16px;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .result-box {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #e5e5ea;
+      margin-top: 8px;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+      word-break: break-all;
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #1d1d1f;
+      font-size: 17px;
+    }
+    .color-preview {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: 1px solid #e5e5ea;
+      margin-right: 12px;
+      vertical-align: middle;
+    }
+    .copy-btn {
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+      margin-left: 0.5rem;
+    }
+    .flex {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .success { color: #27ae60; }
+    .error { color: #e74c3c; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎲 UUID & Random Generator</h1>
+    <p>Demonstrates Bun's <code>randomUUIDv7()</code> and random generation utilities</p>
+
+    <div class="grid">
+      <!-- UUID Generator -->
+      <div class="card">
+        <h3>🆔 UUID Generator</h3>
+        <p style="color: #666; font-size: 0.9rem;">Generate time-ordered UUIDv7</p>
+        <button class="full" onclick="generateUUID()">Generate Single UUID</button>
+        <div id="uuidResult" class="result-box">Click to generate</div>
+        <button class="copy-btn" onclick="copyToClipboard('uuidResult')">📋 Copy</button>
+        
+        <h4 style="margin-top: 2rem;">Multiple UUIDs</h4>
+        <input type="number" id="uuidCount" placeholder="Count" value="5" min="1" max="100" />
+        <button class="full" onclick="generateMultipleUUIDs()">Generate Multiple</button>
+        <pre id="uuidsResult">Enter count and generate...</pre>
+      </div>
+
+      <!-- Random Integer -->
+      <div class="card">
+        <h3>🔢 Random Integer</h3>
+        <div class="flex">
+          <input type="number" id="intMin" placeholder="Min" value="1" />
+          <input type="number" id="intMax" placeholder="Max" value="100" />
+        </div>
+        <button class="full" onclick="generateRandomInt()">Generate</button>
+        <div id="intResult" class="result-box">Click to generate</div>
+        
+        <h4 style="margin-top: 2rem;">Multiple Integers</h4>
+        <input type="number" id="intCount" placeholder="Count" value="10" min="1" max="1000" />
+        <button class="full" onclick="generateMultipleInts()">Generate Multiple</button>
+        <pre id="intsResult">Enter parameters and generate...</pre>
+      </div>
+
+      <!-- Random String -->
+      <div class="card">
+        <h3>🔤 Random String</h3>
+        <input type="number" id="stringLength" placeholder="Length" value="16" min="1" max="1000" />
+        <select id="stringCharset">
+          <option value="alphanumeric">Alphanumeric</option>
+          <option value="alpha">Letters Only</option>
+          <option value="numeric">Numbers Only</option>
+          <option value="hex">Hexadecimal</option>
+        </select>
+        <button class="full" onclick="generateRandomString()">Generate</button>
+        <div id="stringResult" class="result-box">Click to generate</div>
+        <button class="copy-btn" onclick="copyToClipboard('stringResult')">📋 Copy</button>
+      </div>
+
+      <!-- Random Color -->
+      <div class="card">
+        <h3>🎨 Random Color</h3>
+        <button class="full" onclick="generateRandomColor()">Generate Color</button>
+        <div id="colorResult" class="result-box">Click to generate</div>
+        <button class="copy-btn" onclick="copyToClipboard('colorResult')">📋 Copy</button>
+        
+        <h4 style="margin-top: 2rem;">Color Palette</h4>
+        <input type="number" id="colorCount" placeholder="Count" value="5" min="1" max="100" />
+        <button class="full" onclick="generateColorPalette()">Generate Palette</button>
+        <div id="paletteResult" style="margin-top: 0.5rem;"></div>
+      </div>
+
+      <!-- Random Float -->
+      <div class="card">
+        <h3>💯 Random Float</h3>
+        <div class="flex">
+          <input type="number" id="floatMin" placeholder="Min" value="0" step="0.1" />
+          <input type="number" id="floatMax" placeholder="Max" value="1" step="0.1" />
+        </div>
+        <input type="number" id="floatDecimals" placeholder="Decimals" value="2" min="0" max="10" />
+        <button class="full" onclick="generateRandomFloat()">Generate</button>
+        <div id="floatResult" class="result-box">Click to generate</div>
+      </div>
+
+      <!-- Random Boolean -->
+      <div class="card">
+        <h3>✓/✗ Random Boolean</h3>
+        <button class="full" onclick="generateRandomBoolean()">Generate</button>
+        <div id="boolResult" class="result-box">Click to generate</div>
+        
+        <button class="full" style="margin-top: 2rem;" onclick="generateMultipleBooleans()">Generate 10 Booleans</button>
+        <pre id="boolsResult">Click to generate...</pre>
+      </div>
+
+      <!-- Random Date -->
+      <div class="card">
+        <h3>📅 Random Date</h3>
+        <input type="date" id="dateStart" />
+        <input type="date" id="dateEnd" />
+        <button class="full" onclick="generateRandomDate()">Generate</button>
+        <div id="dateResult" class="result-box">Select dates and generate</div>
+      </div>
+
+      <!-- Password Generator -->
+      <div class="card">
+        <h3>🔐 Random Password</h3>
+        <input type="number" id="passwordLength" placeholder="Length" value="16" min="8" max="128" />
+        <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0;">
+          <input type="checkbox" id="passwordSymbols" checked />
+          Include special characters
+        </label>
+        <button class="full" onclick="generatePassword()">Generate Password</button>
+        <div id="passwordResult" class="result-box">Click to generate</div>
+        <button class="copy-btn" onclick="copyToClipboard('passwordResult')">📋 Copy</button>
+      </div>
+
+      <!-- Array Shuffle -->
+      <div class="card">
+        <h3>🔀 Shuffle Array</h3>
+        <p style="color: #666; font-size: 0.9rem;">Randomly shuffle items</p>
+        <button class="full" onclick="shuffleDemo()">Shuffle Demo Array</button>
+        <pre id="shuffleResult">Click to shuffle...</pre>
+        
+        <h4 style="margin-top: 2rem;">Random Pick</h4>
+        <input type="number" id="pickCount" placeholder="Items to pick" value="3" min="1" />
+        <button class="full" onclick="randomPickDemo()">Pick Random Items</button>
+        <pre id="pickResult">Enter count and pick...</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function createRpcClient(baseUrl) {
+      async function callRemote(method, args) {
+        const resp = await fetch(baseUrl + "/rpc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method, args })
+        });
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+        return data.result;
+      }
+      return new Proxy({}, {
+        get(_, prop) {
+          return (...args) => callRemote(prop, args);
+        }
+      });
+    }
+
+    const api = createRpcClient(window.location.origin);
+
+    async function generateUUID() {
+      const div = document.getElementById('uuidResult');
+      try {
+        const uuid = await api.generateUUID();
+        div.textContent = uuid;
+      } catch (e) {
+        div.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function generateMultipleUUIDs() {
+      const count = parseInt(document.getElementById('uuidCount').value);
+      const pre = document.getElementById('uuidsResult');
+      try {
+        const uuids = await api.generateUUIDs(count);
+        pre.textContent = uuids.join('\n');
+      } catch (e) {
+        pre.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function generateRandomInt() {
+      const min = parseInt(document.getElementById('intMin').value);
+      const max = parseInt(document.getElementById('intMax').value);
+      const div = document.getElementById('intResult');
+      try {
+        const num = await api.randomInt(min, max);
+        div.textContent = num;
+      } catch (e) {
+        div.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function generateMultipleInts() {
+      const count = parseInt(document.getElementById('intCount').value);
+      const min = parseInt(document.getElementById('intMin').value);
+      const max = parseInt(document.getElementById('intMax').value);
+      const pre = document.getElementById('intsResult');
+      try {
+        const nums = await api.randomInts(count, min, max);
+        pre.textContent = nums.join(', ');
+      } catch (e) {
+        pre.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function generateRandomString() {
+      const length = parseInt(document.getElementById('stringLength').value);
+      const charset = document.getElementById('stringCharset').value;
+      const div = document.getElementById('stringResult');
+      try {
+        const str = await api.randomString(length, charset);
+        div.textContent = str;
+      } catch (e) {
+        div.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function generateRandomColor() {
+      const div = document.getElementById('colorResult');
+      try {
+        const color = await api.randomColor();
+        div.innerHTML = `<span class="color-preview" style="background: ${color};"></span>${color}`;
+      } catch (e) {
+        div.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function generateColorPalette() {
+      const count = parseInt(document.getElementById('colorCount').value);
+      const div = document.getElementById('paletteResult');
+      try {
+        const colors = await api.randomColors(count);
+        div.innerHTML = colors.map(c => 
+          `<div style="display: inline-block; margin: 0.25rem;">
+            <span class="color-preview" style="background: ${c};"></span>
+            <span style="font-family: monospace; font-size: 0.9rem;">${c}</span>
+          </div>`
+        ).join('');
+      } catch (e) {
+        div.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function generateRandomFloat() {
+      const min = parseFloat(document.getElementById('floatMin').value);
+      const max = parseFloat(document.getElementById('floatMax').value);
+      const decimals = parseInt(document.getElementById('floatDecimals').value);
+      const div = document.getElementById('floatResult');
+      try {
+        const num = await api.randomFloat(min, max, decimals);
+        div.textContent = num;
+      } catch (e) {
+        div.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function generateRandomBoolean() {
+      const div = document.getElementById('boolResult');
+      try {
+        const bool = await api.randomBoolean();
+        div.textContent = bool ? '✓ true' : '✗ false';
+      } catch (e) {
+        div.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function generateMultipleBooleans() {
+      const pre = document.getElementById('boolsResult');
+      try {
+        const bools = [];
+        for (let i = 0; i < 10; i++) {
+          bools.push(await api.randomBoolean());
+        }
+        pre.textContent = bools.map(b => b ? '✓' : '✗').join(' ');
+      } catch (e) {
+        pre.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function generateRandomDate() {
+      const start = document.getElementById('dateStart').value;
+      const end = document.getElementById('dateEnd').value;
+      const div = document.getElementById('dateResult');
+      
+      if (!start || !end) {
+        div.innerHTML = '<span class="error">Please select both dates</span>';
+        return;
+      }
+      
+      try {
+        const date = await api.randomDate(start, end);
+        div.textContent = new Date(date).toLocaleString();
+      } catch (e) {
+        div.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function generatePassword() {
+      const length = parseInt(document.getElementById('passwordLength').value);
+      const symbols = document.getElementById('passwordSymbols').checked;
+      const div = document.getElementById('passwordResult');
+      try {
+        const password = await api.generatePassword(length, symbols);
+        div.textContent = password;
+      } catch (e) {
+        div.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function shuffleDemo() {
+      const pre = document.getElementById('shuffleResult');
+      try {
+        const original = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        const shuffled = await api.shuffle(original);
+        pre.textContent = `Original: [${original.join(', ')}]\nShuffled: [${shuffled.join(', ')}]`;
+      } catch (e) {
+        pre.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function randomPickDemo() {
+      const count = parseInt(document.getElementById('pickCount').value);
+      const pre = document.getElementById('pickResult');
+      try {
+        const items = ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍒', '🍑', '🥝'];
+        const picked = await api.randomPick(items, count);
+        pre.textContent = `Available: ${items.join(' ')}\nPicked: ${picked.join(' ')}`;
+      } catch (e) {
+        pre.innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    function copyToClipboard(elementId) {
+      const element = document.getElementById(elementId);
+      const text = element.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const originalText = element.textContent;
+        element.innerHTML = '<span class="success">✓ Copied!</span>';
+        setTimeout(() => {
+          element.textContent = originalText;
+        }, 1000);
+      });
+    }
+
+    // Set default dates
+    const today = new Date();
+    const nextYear = new Date(today);
+    nextYear.setFullYear(today.getFullYear() + 1);
+    document.getElementById('dateStart').valueAsDate = today;
+    document.getElementById('dateEnd').valueAsDate = nextYear;
+  </script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Manager - Bun RPC</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      background: #f2f2f7;
+      min-height: 100vh;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .header {
+      background: linear-gradient(180deg, #FF2D55 0%, #D70015 100%);
+      padding: 60px 24px 24px;
+      color: white;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 15px;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+    .section {
+      padding: 24px;
+      border-bottom: 0.5px solid #e5e5ea;
+    }
+    .section:last-child {
+      border-bottom: none;
+    }
+    .section h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1d1d1f;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    button {
+      background: #007AFF;
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      margin: 8px 8px 8px 0;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:hover {
+      background: #0051D5;
+      transform: scale(0.98);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    button.secondary {
+      background: #8E8E93;
+    }
+    button.secondary:hover {
+      background: #636366;
+    }
+    input, textarea {
+      padding: 14px;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      font-size: 17px;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 12px;
+      font-family: inherit;
+      background: #f2f2f7;
+    }
+    textarea {
+      min-height: 150px;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+      font-size: 14px;
+    }
+    pre {
+      background: #1d1d1f;
+      color: #f2f2f7;
+      padding: 16px;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .file-list {
+      list-style: none;
+      padding: 0;
+    }
+    .file-item {
+      background: #f2f2f7;
+      padding: 16px;
+      margin: 8px 0;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+    .file-item:hover {
+      background: #e5e5ea;
+      transform: scale(0.98);
+    }
+    .file-info {
+      flex: 1;
+    }
+    .file-name {
+      font-weight: 600;
+      color: #1d1d1f;
+      font-size: 17px;
+    }
+    .file-meta {
+      font-size: 13px;
+      color: #8E8E93;
+      margin-top: 4px;
+    }
+    .file-actions button {
+      padding: 10px 16px;
+      font-size: 15px;
+      margin-left: 8px;
+    }
+    .success { color: #34C759; }
+    .error { color: #FF3B30; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📁 File Manager</h1>
+      <div class="subtitle">File I/O with Bun's File APIs</div>
+    </div>
+
+    <div class="section">
+      <h3>File List</h3>
+      <button onclick="loadFiles()">🔄 Refresh</button>
+      <ul id="fileList" class="file-list">
+        <li style="text-align: center; padding: 32px; color: #8E8E93;">Click Refresh to load files...</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h3>Create/Edit File</h3>
+      <input type="text" id="newFilename" placeholder="filename.txt" />
+      <textarea id="newContent" placeholder="Enter file content..."></textarea>
+      <button onclick="writeFile()">💾 Save File</button>
+      <button class="secondary" onclick="clearForm()">🗑️ Clear</button>
+      <pre id="writeOutput"></pre>
+    </div>
+
+    <div class="section">
+      <h3>File Content Viewer</h3>
+      <pre id="fileContent">Select a file to view its content...</pre>
+    </div>
+  </div>
+
+  <script>
+    function createRpcClient(baseUrl) {
+      async function callRemote(method, args) {
+        const resp = await fetch(baseUrl + "/rpc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method, args })
+        });
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+        return data.result;
+      }
+      return new Proxy({}, {
+        get(_, prop) {
+          return (...args) => callRemote(prop, args);
+        }
+      });
+    }
+
+    const api = createRpcClient(window.location.origin);
+
+    async function loadFiles() {
+      const list = document.getElementById('fileList');
+      list.innerHTML = '<li style="text-align: center; padding: 1rem;">Loading...</li>';
+      
+      try {
+        const files = await api.listFiles();
+        
+        if (files.length === 0) {
+          list.innerHTML = '<li style="text-align: center; padding: 2rem; color: #999;">No files yet. Create one below!</li>';
+          return;
+        }
+        
+        list.innerHTML = files.map(file => `
+          <li class="file-item">
+            <div class="file-info">
+              <div class="file-name">📄 ${file.name}</div>
+              <div class="file-meta">${formatBytes(file.size)} · Modified: ${new Date(file.modified).toLocaleString()}</div>
+            </div>
+            <div class="file-actions">
+              <button onclick="readFile('${file.name}')">👁️ View</button>
+              <button class="secondary" onclick="editFile('${file.name}')">✏️ Edit</button>
+              <button class="secondary" onclick="deleteFile('${file.name}')">🗑️ Delete</button>
+            </div>
+          </li>
+        `).join('');
+      } catch (e) {
+        list.innerHTML = `<li style="color: red; padding: 1rem;">❌ ${e.message}</li>`;
+      }
+    }
+
+    async function readFile(filename) {
+      const viewer = document.getElementById('fileContent');
+      viewer.textContent = 'Loading...';
+      
+      try {
+        const content = await api.readFile(filename);
+        viewer.innerHTML = `<span class="success">📄 ${filename}</span>\n\n${content}`;
+      } catch (e) {
+        viewer.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function editFile(filename) {
+      document.getElementById('newFilename').value = filename;
+      try {
+        const content = await api.readFile(filename);
+        document.getElementById('newContent').value = content;
+        document.getElementById('writeOutput').innerHTML = `<span class="success">✏️ Editing ${filename}</span>`;
+      } catch (e) {
+        document.getElementById('writeOutput').innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function writeFile() {
+      const filename = document.getElementById('newFilename').value.trim();
+      const content = document.getElementById('newContent').value;
+      const out = document.getElementById('writeOutput');
+      
+      if (!filename) {
+        out.innerHTML = '<span class="error">❌ Please enter a filename</span>';
+        return;
+      }
+      
+      out.textContent = 'Saving...';
+      
+      try {
+        const result = await api.writeFile(filename, content);
+        out.innerHTML = `<span class="success">✅ ${result}</span>`;
+        loadFiles();
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function deleteFile(filename) {
+      if (!confirm(`Delete ${filename}?`)) return;
+      
+      try {
+        const result = await api.deleteFile(filename);
+        document.getElementById('fileContent').innerHTML = `<span class="success">✅ ${result}</span>`;
+        loadFiles();
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    function clearForm() {
+      document.getElementById('newFilename').value = '';
+      document.getElementById('newContent').value = '';
+      document.getElementById('writeOutput').textContent = '';
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    // Load files on page load
+    loadFiles();
+  </script>
+</body>
+</html>

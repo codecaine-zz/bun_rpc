@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shell Runner - Bun RPC</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      background: #f2f2f7;
+      min-height: 100vh;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .header {
+      background: linear-gradient(180deg, #5E5CE6 0%, #4A48C7 100%);
+      padding: 60px 24px 24px;
+      color: white;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 15px;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+    .section {
+      padding: 24px;
+      border-bottom: 0.5px solid #e5e5ea;
+    }
+    .section:last-child {
+      border-bottom: none;
+    }
+    .section h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1d1d1f;
+    }
+    .button-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    button {
+      background: #007AFF;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:hover {
+      background: #0051D5;
+      transform: scale(0.98);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    input, select {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      font-size: 17px;
+      font-family: inherit;
+      margin-bottom: 12px;
+      background: #f2f2f7;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    select {
+      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8"><path fill="%23007AFF" d="M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 40px;
+    }
+    pre {
+      background: #1d1d1f;
+      color: #f2f2f7;
+      padding: 16px;
+      border-radius: 12px;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+    .error {
+      color: #FF3B30;
+    }
+    .success {
+      color: #34C759;
+    }
+    .info {
+      color: #8E8E93;
+      font-size: 15px;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🐚 Shell Runner</h1>
+      <div class="subtitle">Run safe system commands with Bun's shell API</div>
+    </div>
+
+    <div class="section">
+      <h3>Quick Actions</h3>
+      <div class="button-group">
+        <button onclick="listFiles()">📁 List Files</button>
+        <button onclick="getCurrentDir()">📍 Current Directory</button>
+        <button onclick="getSystemInfo()">💻 System Info</button>
+      </div>
+      <pre id="quickOutput">Click a button to run a command...</pre>
+    </div>
+
+    <div class="section">
+      <h3>Run Command</h3>
+      <p class="info">⚠️ Only safe commands allowed: ls, pwd, date, whoami, uname, echo</p>
+      <select id="commandSelect">
+        <option value="ls -la">ls -la (list files detailed)</option>
+        <option value="pwd">pwd (current directory)</option>
+        <option value="date">date (current date/time)</option>
+        <option value="whoami">whoami (current user)</option>
+        <option value="uname -a">uname -a (system info)</option>
+        <option value="echo Hello World">echo Hello World</option>
+      </select>
+      <button onclick="runCommand()">▶️ Run</button>
+      <pre id="commandOutput">Select and run a command...</pre>
+    </div>
+
+    <div class="section">
+      <h3>Echo Message</h3>
+      <input type="text" id="echoInput" placeholder="Type a message..." value="Hello from Bun!" />
+      <button onclick="echoMessage()">📢 Echo</button>
+      <pre id="echoOutput">Echo output will appear here...</pre>
+    </div>
+  </div>
+
+  <script>
+    // Create RPC client
+    function createRpcClient(baseUrl) {
+      async function callRemote(method, args) {
+        const resp = await fetch(baseUrl + "/rpc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method, args })
+        });
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+        return data.result;
+      }
+
+      return new Proxy({}, {
+        get(_, prop) {
+          return (...args) => callRemote(prop, args);
+        }
+      });
+    }
+
+    const api = createRpcClient(window.location.origin);
+
+    async function listFiles() {
+      const out = document.getElementById('quickOutput');
+      out.textContent = 'Loading...';
+      try {
+        const files = await api.listFiles();
+        out.textContent = files.join('\n');
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function getCurrentDir() {
+      const out = document.getElementById('quickOutput');
+      out.textContent = 'Loading...';
+      try {
+        const dir = await api.getCurrentDir();
+        out.innerHTML = `<span class="success">📍 ${dir}</span>`;
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function getSystemInfo() {
+      const out = document.getElementById('quickOutput');
+      out.textContent = 'Loading...';
+      try {
+        const info = await api.getSystemInfo();
+        out.innerHTML = `<span class="success">OS:</span> ${info.os}\n<span class="success">User:</span> ${info.user}\n<span class="success">Date:</span> ${info.date}`;
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function runCommand() {
+      const command = document.getElementById('commandSelect').value;
+      const out = document.getElementById('commandOutput');
+      out.textContent = `Running: ${command}...`;
+      
+      try {
+        const result = await api.runCommand(command);
+        
+        let output = '';
+        if (result.stdout) {
+          output += `<span class="success">STDOUT:</span>\n${result.stdout}\n`;
+        }
+        if (result.stderr) {
+          output += `<span class="error">STDERR:</span>\n${result.stderr}\n`;
+        }
+        output += `\n<span class="info">Exit Code: ${result.exitCode}</span>`;
+        
+        out.innerHTML = output;
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function echoMessage() {
+      const message = document.getElementById('echoInput').value;
+      const out = document.getElementById('echoOutput');
+      out.textContent = 'Echoing...';
+      
+      try {
+        const result = await api.echo(message);
+        out.innerHTML = `<span class="success">${result}</span>`;
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+  </script>
+</body>
+</html>

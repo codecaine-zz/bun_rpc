@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text Processor - Bun RPC</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      background: #f2f2f7;
+      min-height: 100vh;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 60px 24px 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 24px;
+      color: #1d1d1f;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 24px;
+    }
+    .panel {
+      background: #f2f2f7;
+      padding: 20px;
+      border-radius: 16px;
+    }
+    .panel h3 {
+      margin-top: 0;
+      color: #1d1d1f;
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 14px;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      font-size: 17px;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+      resize: vertical;
+      box-sizing: border-box;
+      background: white;
+    }
+    button {
+      background: #007AFF;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      margin: 8px 8px 8px 0;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:hover {
+      background: #0051D5;
+      transform: scale(0.98);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    input, select {
+      padding: 14px;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      font-size: 17px;
+      margin: 8px 0;
+      font-family: inherit;
+      background: white;
+    }
+    .tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0;
+    }
+    .tools button {
+      margin: 0;
+    }
+    .stats {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      border: 1px solid #e5e5ea;
+    }
+    .stat-item {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #007AFF;
+    }
+    .stat-label {
+      font-size: 15px;
+      color: #8E8E93;
+      margin-top: 4px;
+    }
+    pre {
+      background: #282c34;
+      color: #abb2bf;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .form-group {
+      margin: 1rem 0;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: #333;
+    }
+    .success { color: #27ae60; }
+    .error { color: #e74c3c; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📝 Text Processor</h1>
+    <p>Demonstrates Bun's text APIs: <code>Bun.escapeHTML</code>, <code>Bun.stringWidth</code>, <code>Bun.indexOfLine</code></p>
+
+    <div class="layout">
+      <!-- Input Panel -->
+      <div class="panel">
+        <h3>Input Text</h3>
+        <textarea id="inputText" placeholder="Enter or paste your text here...">Hello World! 🌍
+This is a sample text for processing.
+It has multiple lines and some special characters: <script>alert('test')</script>
+
+Visit https://bun.sh for more info!
+Contact: example@email.com</textarea>
+        
+        <div class="tools">
+          <button onclick="analyzeText()">📊 Analyze</button>
+          <button onclick="clearInput()">🗑️ Clear</button>
+          <button onclick="loadSample()">📄 Load Sample</button>
+        </div>
+
+        <div id="stats" class="stats" style="display: none;"></div>
+      </div>
+
+      <!-- Output Panel -->
+      <div class="panel">
+        <h3>Output</h3>
+        <div id="escapeInfo" style="display: none; background: #e8f5e9; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem; border-left: 4px solid #4caf50;">
+          <strong>HTML Escaped:</strong> <span id="escapeChanges"></span>
+        </div>
+        <textarea id="outputText" placeholder="Processed text will appear here..." readonly></textarea>
+        <button onclick="copyOutput()">📋 Copy Output</button>
+        <button onclick="useAsInput()">⬅️ Use as Input</button>
+      </div>
+    </div>
+
+    <!-- Processing Tools -->
+    <div class="panel" style="margin-top: 2rem;">
+      <h3>Text Processing Tools</h3>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+        <!-- Case Conversion -->
+        <div>
+          <h4>Case Conversion</h4>
+          <select id="caseType">
+            <option value="upper">UPPERCASE</option>
+            <option value="lower">lowercase</option>
+            <option value="title">Title Case</option>
+            <option value="sentence">Sentence case</option>
+            <option value="camel">camelCase</option>
+            <option value="snake">snake_case</option>
+            <option value="kebab">kebab-case</option>
+          </select>
+          <button onclick="convertCase()">Convert</button>
+        </div>
+
+        <!-- HTML Escape -->
+        <div>
+          <h4>HTML Processing</h4>
+          <button onclick="escapeHTML()">🔒 Escape HTML</button>
+          <button onclick="stripHTML()">🧹 Strip HTML Tags</button>
+        </div>
+
+        <!-- Find & Replace -->
+        <div>
+          <h4>Find & Replace</h4>
+          <input type="text" id="findText" placeholder="Find..." />
+          <input type="text" id="replaceText" placeholder="Replace with..." />
+          <label><input type="checkbox" id="caseSensitive" checked /> Case sensitive</label>
+          <button onclick="findReplace()">🔍 Replace</button>
+        </div>
+
+        <!-- Line Operations -->
+        <div>
+          <h4>Line Operations</h4>
+          <button onclick="removeDuplicateLines()">Remove Duplicates</button>
+          <button onclick="sortLines('asc')">↑ Sort Ascending</button>
+          <button onclick="sortLines('desc')">↓ Sort Descending</button>
+          <button onclick="addLineNumbers()">🔢 Add Numbers</button>
+        </div>
+
+        <!-- Text Operations -->
+        <div>
+          <h4>Text Operations</h4>
+          <button onclick="normalizeWhitespace()">Normalize Spaces</button>
+          <button onclick="reverseText()">↩️ Reverse</button>
+          <input type="number" id="truncateLength" placeholder="Max length" value="50" />
+          <button onclick="truncateText()">✂️ Truncate</button>
+        </div>
+
+        <!-- Extraction -->
+        <div>
+          <h4>Extract Data</h4>
+          <button onclick="extractURLs()">🔗 Extract URLs</button>
+          <button onclick="extractEmails()">📧 Extract Emails</button>
+        </div>
+
+        <!-- Encoding -->
+        <div>
+          <h4>Base64 Encoding</h4>
+          <button onclick="base64Encode()">➡️ Encode</button>
+          <button onclick="base64Decode()">⬅️ Decode</button>
+        </div>
+
+        <!-- Text Wrapping -->
+        <div>
+          <h4>Text Wrapping</h4>
+          <input type="number" id="wrapWidth" placeholder="Width" value="40" />
+          <button onclick="wrapText()">📏 Wrap Lines</button>
+        </div>
+
+        <!-- String Width -->
+        <div>
+          <h4>String Width (Bun API)</h4>
+          <button onclick="getStringWidth()">📏 Get Display Width</button>
+          <pre id="widthOutput" style="margin-top: 0.5rem; min-height: 60px;"></pre>
+        </div>
+
+        <!-- Reading Time -->
+        <div>
+          <h4>Reading Time</h4>
+          <button onclick="getReadingTime()">⏱️ Calculate</button>
+          <pre id="readingOutput" style="margin-top: 0.5rem; min-height: 60px;"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function createRpcClient(baseUrl) {
+      async function callRemote(method, args) {
+        const resp = await fetch(baseUrl + "/rpc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method, args })
+        });
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+        return data.result;
+      }
+      return new Proxy({}, {
+        get(_, prop) {
+          return (...args) => callRemote(prop, args);
+        }
+      });
+    }
+
+    const api = createRpcClient(window.location.origin);
+
+    function getInput() {
+      return document.getElementById('inputText').value;
+    }
+
+    function setOutput(text) {
+      document.getElementById('outputText').value = text;
+      // Hide the escape info box when setting new output (except when called from escapeHTML)
+      const caller = (new Error()).stack.split('\n')[2];
+      if (!caller.includes('escapeHTML')) {
+        const infoBox = document.getElementById('escapeInfo');
+        if (infoBox) infoBox.style.display = 'none';
+      }
+    }
+
+    function clearInput() {
+      document.getElementById('inputText').value = '';
+      document.getElementById('stats').style.display = 'none';
+    }
+
+    function loadSample() {
+      document.getElementById('inputText').value = `Hello World! 🌍 Unicode test: 你好世界
+
+This is a multi-paragraph text sample for testing the text processor.
+
+It includes:
+- Multiple lines
+- Special characters: <script>alert('xss')</script>
+- URLs: https://bun.sh and https://github.com
+- Emails: test@example.com, hello@bun.sh
+- Emojis: 🚀 💻 ✨
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`;
+    }
+
+    async function analyzeText() {
+      const text = getInput();
+      if (!text) {
+        alert('Please enter some text first');
+        return;
+      }
+
+      try {
+        const stats = await api.analyzeText(text);
+        const statsDiv = document.getElementById('stats');
+        statsDiv.innerHTML = `
+          <div class="stat-item">
+            <div class="stat-value">${stats.characters}</div>
+            <div class="stat-label">Characters</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${stats.words}</div>
+            <div class="stat-label">Words</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${stats.lines}</div>
+            <div class="stat-label">Lines</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${stats.sentences}</div>
+            <div class="stat-label">Sentences</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${stats.displayWidth}</div>
+            <div class="stat-label">Display Width</div>
+          </div>
+        `;
+        statsDiv.style.display = 'grid';
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function convertCase() {
+      const text = getInput();
+      const caseType = document.getElementById('caseType').value;
+      try {
+        const result = await api.convertCase(text, caseType);
+        setOutput(result);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function escapeHTML() {
+      const text = getInput();
+      try {
+        const result = await api.escapeHTML(text);
+        setOutput(result);
+        
+        // Show a visual comparison
+        const changes = [];
+        if (text.includes('<')) changes.push('< → &lt;');
+        if (text.includes('>')) changes.push('> → &gt;');
+        if (text.includes('&')) changes.push('& → &amp;');
+        if (text.includes('"')) changes.push('" → &quot;');
+        if (text.includes("'")) changes.push("' → &#x27;");
+        
+        const infoBox = document.getElementById('escapeInfo');
+        const changesSpan = document.getElementById('escapeChanges');
+        
+        if (changes.length > 0) {
+          changesSpan.textContent = changes.join(', ');
+          infoBox.style.display = 'block';
+        } else {
+          changesSpan.textContent = 'No HTML characters found to escape';
+          infoBox.style.display = 'block';
+        }
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function stripHTML() {
+      const text = getInput();
+      try {
+        const result = await api.stripHTML(text);
+        setOutput(result);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function findReplace() {
+      const text = getInput();
+      const find = document.getElementById('findText').value;
+      const replace = document.getElementById('replaceText').value;
+      const caseSensitive = document.getElementById('caseSensitive').checked;
+
+      if (!find) {
+        alert('Please enter text to find');
+        return;
+      }
+
+      try {
+        const result = await api.findReplace(text, find, replace, caseSensitive);
+        setOutput(result.result);
+        alert(`Replaced ${result.count} occurrence(s)`);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function removeDuplicateLines() {
+      const text = getInput();
+      try {
+        const result = await api.removeDuplicateLines(text);
+        setOutput(result);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function sortLines(order) {
+      const text = getInput();
+      try {
+        const result = await api.sortLines(text, order);
+        setOutput(result);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function addLineNumbers() {
+      const text = getInput();
+      try {
+        const result = await api.addLineNumbers(text);
+        setOutput(result);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function normalizeWhitespace() {
+      const text = getInput();
+      try {
+        const result = await api.normalizeWhitespace(text);
+        setOutput(result);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function reverseText() {
+      const text = getInput();
+      try {
+        const result = await api.reverseText(text);
+        setOutput(result);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function truncateText() {
+      const text = getInput();
+      const length = parseInt(document.getElementById('truncateLength').value);
+      try {
+        const result = await api.truncate(text, length);
+        setOutput(result);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function extractURLs() {
+      const text = getInput();
+      try {
+        const urls = await api.extractURLs(text);
+        setOutput(urls.length > 0 ? urls.join('\n') : 'No URLs found');
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function extractEmails() {
+      const text = getInput();
+      try {
+        const emails = await api.extractEmails(text);
+        setOutput(emails.length > 0 ? emails.join('\n') : 'No emails found');
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function base64Encode() {
+      const text = getInput();
+      try {
+        const result = await api.base64Encode(text);
+        setOutput(result);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function base64Decode() {
+      const text = getInput();
+      try {
+        const result = await api.base64Decode(text);
+        setOutput(result);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function wrapText() {
+      const text = getInput();
+      const width = parseInt(document.getElementById('wrapWidth').value);
+      try {
+        const result = await api.wrapText(text, width);
+        setOutput(result);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+      }
+    }
+
+    async function getStringWidth() {
+      const text = getInput();
+      try {
+        const width = await api.getStringWidth(text);
+        document.getElementById('widthOutput').innerHTML = 
+          `<span class="success">Display Width:</span> ${width} columns\n<span class="success">Character Length:</span> ${text.length} characters`;
+      } catch (e) {
+        document.getElementById('widthOutput').innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    async function getReadingTime() {
+      const text = getInput();
+      try {
+        const time = await api.getReadingTime(text);
+        document.getElementById('readingOutput').innerHTML = 
+          `<span class="success">Reading Time:</span> ${time.minutes}m ${time.seconds}s\n<span class="success">Word Count:</span> ${time.wordCount} words\n<span class="success">Speed:</span> 200 words/minute`;
+      } catch (e) {
+        document.getElementById('readingOutput').innerHTML = `<span class="error">${e.message}</span>`;
+      }
+    }
+
+    function copyOutput() {
+      const output = document.getElementById('outputText');
+      output.select();
+      document.execCommand('copy');
+      alert('Copied to clipboard!');
+    }
+
+    function useAsInput() {
+      const output = document.getElementById('outputText').value;
+      document.getElementById('inputText').value = output;
+    }
+
+    // Auto-analyze on page load
+    analyzeText();
+  </script>
+</body>
+</html>

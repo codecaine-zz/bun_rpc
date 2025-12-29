@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Utilities - Bun RPC</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      background: #f2f2f7;
+      min-height: 100vh;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 60px 24px 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 24px;
+      color: #1d1d1f;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 24px;
+    }
+    .card {
+      background: #f2f2f7;
+      padding: 20px;
+      border-radius: 16px;
+    }
+    .card h3 {
+      margin-top: 0;
+      color: #1d1d1f;
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    button {
+      background: #007AFF;
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      margin: 8px 8px 8px 0;
+      transition: all 0.2s ease;
+      width: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:hover {
+      background: #0051D5;
+      transform: scale(0.98);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    input {
+      padding: 14px;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      font-size: 17px;
+      width: 100%;
+      box-sizing: border-box;
+      margin: 8px 0;
+      background: white;
+      font-family: inherit;
+    }
+    pre {
+      background: #1d1d1f;
+      color: #f2f2f7;
+      padding: 16px;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      font-size: 15px;
+    }
+    .info-label {
+      font-weight: 600;
+      color: #007AFF;
+    }
+    .info-value {
+      color: #1d1d1f;
+    }
+    .success { color: #34C759; }
+    .error { color: #FF3B30; }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #007AFF;
+      color: white;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚙️ System Utilities Demo</h1>
+    <p>Demonstrates Bun's utility APIs: <code>Bun.version</code>, <code>Bun.env</code>, <code>Bun.which</code>, and more</p>
+
+    <div class="grid">
+      <!-- Bun Info -->
+      <div class="card">
+        <h3>🦊 Bun Runtime Info</h3>
+        <button onclick="loadBunInfo()">Load Info</button>
+        <div id="bunInfo" style="margin-top: 1rem;">
+          Click to load runtime information
+        </div>
+      </div>
+
+      <!-- Environment -->
+      <div class="card">
+        <h3>🌍 Environment Variables</h3>
+        <button onclick="loadEnvironment()">Load Environment</button>
+        <pre id="envOutput">Click to load environment variables...</pre>
+      </div>
+
+      <!-- System Stats -->
+      <div class="card">
+        <h3>📊 System Statistics</h3>
+        <button onclick="loadSystemStats()">Load Stats</button>
+        <div id="systemStats" style="margin-top: 1rem;">
+          Click to load system statistics
+        </div>
+      </div>
+
+      <!-- Process Info -->
+      <div class="card">
+        <h3>🔧 Process Information</h3>
+        <button onclick="loadProcessInfo()">Load Process Info</button>
+        <div id="processInfo" style="margin-top: 1rem;">
+          Click to load process information
+        </div>
+      </div>
+
+      <!-- Which Command -->
+      <div class="card">
+        <h3>🔍 Find Executable (which)</h3>
+        <input type="text" id="whichCommand" placeholder="Command name (e.g., node)" />
+        <button onclick="findCommand()">Find</button>
+        <pre id="whichOutput">Enter a command name...</pre>
+      </div>
+
+      <!-- Sleep Test -->
+      <div class="card">
+        <h3>💤 Sleep Test (Bun.sleep)</h3>
+        <input type="number" id="sleepDuration" placeholder="Milliseconds" value="1000" />
+        <button onclick="testSleep()">Sleep</button>
+        <pre id="sleepOutput">Enter duration and click Sleep...</pre>
+      </div>
+
+      <!-- Nanoseconds -->
+      <div class="card">
+        <h3>⏱️ High-Res Timer</h3>
+        <button onclick="getNano()">Get Nanoseconds</button>
+        <pre id="nanoOutput">Click to get high-resolution timestamp...</pre>
+      </div>
+
+      <!-- String Width -->
+      <div class="card">
+        <h3>📏 String Width</h3>
+        <input type="text" id="stringInput" placeholder="Enter text..." value="Hello 世界 🌍" />
+        <button onclick="getStringWidth()">Get Width</button>
+        <pre id="widthOutput">Enter text to measure...</pre>
+      </div>
+
+      <!-- Escape HTML -->
+      <div class="card">
+        <h3>🔒 Escape HTML</h3>
+        <input type="text" id="htmlInput" placeholder="HTML to escape..." value="<script>alert('xss')</script>" />
+        <button onclick="escapeHTML()">Escape</button>
+        <pre id="htmlOutput">Enter HTML to escape...</pre>
+      </div>
+
+      <!-- Deep Equals -->
+      <div class="card">
+        <h3>⚖️ Deep Equals Test</h3>
+        <button onclick="testDeepEquals()">Run Test</button>
+        <pre id="equalsOutput">Click to test deep equality...</pre>
+      </div>
+
+      <!-- Path Conversion -->
+      <div class="card">
+        <h3>🔀 Path Conversions</h3>
+        <input type="text" id="pathInput" placeholder="/path/to/file" value="/tmp/test.txt" />
+        <button onclick="convertPath()">Convert to URL</button>
+        <pre id="pathOutput">Enter a path...</pre>
+      </div>
+
+      <!-- Disk Usage -->
+      <div class="card">
+        <h3>💾 Disk Usage</h3>
+        <button onclick="getDiskUsage()">Check Disk</button>
+        <pre id="diskOutput">Click to check disk usage...</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function createRpcClient(baseUrl) {
+      async function callRemote(method, args) {
+        const resp = await fetch(baseUrl + "/rpc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method, args })
+        });
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+        return data.result;
+      }
+      return new Proxy({}, {
+        get(_, prop) {
+          return (...args) => callRemote(prop, args);
+        }
+      });
+    }
+
+    const api = createRpcClient(window.location.origin);
+
+    async function loadBunInfo() {
+      const div = document.getElementById('bunInfo');
+      div.innerHTML = 'Loading...';
+      
+      try {
+        const info = await api.getBunInfo();
+        div.innerHTML = `
+          <div class="info-grid">
+            <span class="info-label">Version:</span>
+            <span class="info-value">${info.version}</span>
+            <span class="info-label">Revision:</span>
+            <span class="info-value">${info.revision}</span>
+            <span class="info-label">Platform:</span>
+            <span class="info-value">${info.platform}</span>
+            <span class="info-label">Architecture:</span>
+            <span class="info-value">${info.arch}</span>
+          </div>
+        `;
+      } catch (e) {
+        div.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function loadEnvironment() {
+      const out = document.getElementById('envOutput');
+      out.textContent = 'Loading...';
+      
+      try {
+        const env = await api.getEnvironment();
+        out.textContent = Object.entries(env)
+          .map(([k, v]) => `${k}=${v}`)
+          .join('\n');
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function loadSystemStats() {
+      const div = document.getElementById('systemStats');
+      div.innerHTML = 'Loading...';
+      
+      try {
+        const stats = await api.getSystemStats();
+        const uptimeHours = (stats.uptime / 3600).toFixed(2);
+        const totalGB = (stats.totalMemory / 1024 / 1024 / 1024).toFixed(2);
+        const freeGB = (stats.freeMemory / 1024 / 1024 / 1024).toFixed(2);
+        const usedPercent = ((1 - stats.freeMemory / stats.totalMemory) * 100).toFixed(1);
+        
+        div.innerHTML = `
+          <div class="info-grid">
+            <span class="info-label">Uptime:</span>
+            <span class="info-value">${uptimeHours} hours</span>
+            <span class="info-label">CPU Cores:</span>
+            <span class="info-value">${stats.cpuCount}</span>
+            <span class="info-label">Load Average:</span>
+            <span class="info-value">${stats.loadAverage.map(l => l.toFixed(2)).join(', ')}</span>
+            <span class="info-label">Memory:</span>
+            <span class="info-value">${freeGB}GB free / ${totalGB}GB total (${usedPercent}% used)</span>
+          </div>
+        `;
+      } catch (e) {
+        div.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function loadProcessInfo() {
+      const div = document.getElementById('processInfo');
+      div.innerHTML = 'Loading...';
+      
+      try {
+        const info = await api.getProcessInfo();
+        const memMB = (info.memoryUsage.heapUsed / 1024 / 1024).toFixed(2);
+        
+        div.innerHTML = `
+          <div class="info-grid">
+            <span class="info-label">PID:</span>
+            <span class="info-value">${info.pid}</span>
+            <span class="info-label">Parent PID:</span>
+            <span class="info-value">${info.ppid}</span>
+            <span class="info-label">Uptime:</span>
+            <span class="info-value">${info.uptime.toFixed(2)}s</span>
+            <span class="info-label">Memory Used:</span>
+            <span class="info-value">${memMB} MB</span>
+            <span class="info-label">CWD:</span>
+            <span class="info-value" style="word-break: break-all;">${info.cwd}</span>
+          </div>
+        `;
+      } catch (e) {
+        div.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function findCommand() {
+      const command = document.getElementById('whichCommand').value.trim();
+      const out = document.getElementById('whichOutput');
+      
+      if (!command) {
+        out.innerHTML = '<span class="error">❌ Please enter a command</span>';
+        return;
+      }
+      
+      out.textContent = 'Searching...';
+      
+      try {
+        const path = await api.which(command);
+        
+        if (path) {
+          out.innerHTML = `<span class="success">✅ Found:</span>\n${path}`;
+        } else {
+          out.innerHTML = `<span class="error">❌ Command '${command}' not found</span>`;
+        }
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function testSleep() {
+      const duration = parseInt(document.getElementById('sleepDuration').value);
+      const out = document.getElementById('sleepOutput');
+      
+      if (isNaN(duration) || duration < 0) {
+        out.innerHTML = '<span class="error">❌ Please enter a valid duration</span>';
+        return;
+      }
+      
+      out.textContent = `Sleeping for ${duration}ms...`;
+      const start = Date.now();
+      
+      try {
+        const result = await api.sleep(duration);
+        const clientTime = Date.now() - start;
+        out.innerHTML = `<span class="success">Server:</span> ${result}\n<span class="success">Client roundtrip:</span> ${clientTime}ms`;
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function getNano() {
+      const out = document.getElementById('nanoOutput');
+      out.textContent = 'Getting timestamp...';
+      
+      try {
+        const nano = await api.getNanoseconds();
+        out.innerHTML = `<span class="success">Nanoseconds:</span>\n${nano}\n\n<span class="success">Milliseconds:</span>\n${(nano / 1_000_000).toFixed(3)}`;
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function getStringWidth() {
+      const text = document.getElementById('stringInput').value;
+      const out = document.getElementById('widthOutput');
+      
+      if (!text) {
+        out.innerHTML = '<span class="error">❌ Please enter text</span>';
+        return;
+      }
+      
+      try {
+        const width = await api.stringWidth(text);
+        out.innerHTML = `<span class="success">Text:</span> ${text}\n<span class="success">Width:</span> ${width} columns\n<span class="success">Length:</span> ${text.length} characters`;
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function escapeHTML() {
+      const html = document.getElementById('htmlInput').value;
+      const out = document.getElementById('htmlOutput');
+      
+      if (!html) {
+        out.innerHTML = '<span class="error">❌ Please enter HTML</span>';
+        return;
+      }
+      
+      try {
+        const escaped = await api.escapeHTML(html);
+        out.innerHTML = `<span class="success">Original:</span>\n${html}\n\n<span class="success">Escaped:</span>\n${escaped}`;
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function testDeepEquals() {
+      const out = document.getElementById('equalsOutput');
+      out.textContent = 'Running tests...';
+      
+      try {
+        const test1 = await api.deepEquals({a: 1, b: 2}, {a: 1, b: 2});
+        const test2 = await api.deepEquals([1, 2, 3], [1, 2, 3]);
+        const test3 = await api.deepEquals({a: 1}, {a: 2});
+        
+        out.innerHTML = `
+<span class="success">Test 1:</span> {a:1, b:2} === {a:1, b:2} → ${test1 ? '✅ true' : '❌ false'}
+<span class="success">Test 2:</span> [1,2,3] === [1,2,3] → ${test2 ? '✅ true' : '❌ false'}
+<span class="success">Test 3:</span> {a:1} === {a:2} → ${test3 ? '✅ true' : '❌ false (correct)'}
+        `;
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function convertPath() {
+      const path = document.getElementById('pathInput').value.trim();
+      const out = document.getElementById('pathOutput');
+      
+      if (!path) {
+        out.innerHTML = '<span class="error">❌ Please enter a path</span>';
+        return;
+      }
+      
+      try {
+        const url = await api.pathToFileURL(path);
+        out.innerHTML = `<span class="success">Path:</span>\n${path}\n\n<span class="success">File URL:</span>\n${url}`;
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    async function getDiskUsage() {
+      const out = document.getElementById('diskOutput');
+      out.textContent = 'Checking disk...';
+      
+      try {
+        const usage = await api.getDiskUsage();
+        out.textContent = usage;
+      } catch (e) {
+        out.innerHTML = `<span class="error">❌ ${e.message}</span>`;
+      }
+    }
+
+    // Auto-load some info on page load
+    loadBunInfo();
+    loadSystemStats();
+  </script>
+</body>
+</html>

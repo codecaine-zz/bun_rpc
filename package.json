@@ -1,6 +1,17 @@
 {
   "name": "bun_rpc",
+  "version": "1.0.0",
+  "description": "RPC framework for Bun with demo applications",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run server.ts",
+    "dev": "bun --watch server.ts",
+    "test": "bun test",
+    "test:verbose": "bun test --verbose",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

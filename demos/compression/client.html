@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compression - Bun RPC</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      background: #f2f2f7;
+      min-height: 100vh;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .header {
+      background: white;
+      padding: 60px 24px 24px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      color: #1d1d1f;
+    }
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .panel {
+      background: white;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .panel h2 {
+      color: #007AFF;
+      margin-bottom: 16px;
+      font-size: 22px;
+      font-weight: 600;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      padding: 14px;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+      font-size: 14px;
+      resize: vertical;
+      margin-bottom: 12px;
+      background: #f2f2f7;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #007AFF;
+      background: white;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    button {
+      background: #007AFF;
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:hover {
+      background: #0051D5;
+      transform: scale(0.98);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    .stats {
+      background: #f2f2f7;
+      padding: 16px;
+      border-radius: 12px;
+      margin-top: 16px;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+    .stat-label {
+      color: #8E8E93;
+      font-weight: 600;
+    }
+    .stat-value {
+      color: #1d1d1f;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+    }
+    .comparison {
+      background: white;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .comparison h2 {
+      color: #007AFF;
+      margin-bottom: 16px;
+      font-size: 22px;
+      font-weight: 600;
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .comparison-card {
+      background: #f2f2f7;
+      padding: 16px;
+      border-radius: 12px;
+      border-left: 3px solid #007AFF;
+    }
+    .comparison-card h3 {
+      color: #1d1d1f;
+      margin-bottom: 12px;
+      font-size: 17px;
+      font-weight: 600;
+    }
+    .winner {
+      border-left-color: #34C759;
+      background: #e8f5e9;
+    }
+    .winner h3:after {
+      content: " 🏆";
+    }
+    .level-slider {
+      width: 100%;
+      margin-top: 12px;
+      appearance: none;
+      -webkit-appearance: none;
+      height: 6px;
+      border-radius: 5px;
+      background: #e5e5ea;
+      outline: none;
+    }
+    .level-slider::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #007AFF;
+      cursor: pointer;
+    }
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: #8E8E93;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🗜️ Text Compression</h1>
+    </div>
+    
+    <div class="content">
+      <!-- Input Panel -->
+      <div class="panel">
+        <h2>📝 Input Text</h2>
+        <textarea id="input" placeholder="Enter or paste text to compress...">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</textarea>
+        
+        <div class="controls">
+          <button onclick="compressGzip()">Gzip</button>
+          <button onclick="compressDeflate()">Deflate</button>
+          <button onclick="compressZstd()">Zstd (Async)</button>
+          <button onclick="compressZstdSync()">Zstd (Sync)</button>
+        </div>
+
+        <div class="slider-label">
+          <span>Zstd Compression Level:</span>
+          <span id="levelValue">3</span>
+        </div>
+        <input type="range" class="level-slider" id="zstdLevel" min="1" max="22" value="3" oninput="document.getElementById('levelValue').textContent = this.value">
+        
+        <div class="stats" id="compressStats" style="display: none;">
+          <div class="stat-row">
+            <span class="stat-label">Original Size:</span>
+            <span class="stat-value" id="origSize">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Compressed Size:</span>
+            <span class="stat-value" id="compSize">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Compression Ratio:</span>
+            <span class="stat-value" id="ratio">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Algorithm:</span>
+            <span class="stat-value" id="algorithm">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Output Panel -->
+      <div class="panel">
+        <h2>📦 Compressed Data (Base64)</h2>
+        <textarea id="output" readonly placeholder="Compressed data will appear here..."></textarea>
+        
+        <div class="controls">
+          <button onclick="decompress()">Decompress</button>
+          <button onclick="copyOutput()">Copy</button>
+          <button onclick="clearAll()">Clear All</button>
+        </div>
+
+        <div class="stats" id="decompressStats" style="display: none;">
+          <div class="stat-row">
+            <span class="stat-label">Decompressed Size:</span>
+            <span class="stat-value" id="decompSize">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Status:</span>
+            <span class="stat-value" id="status">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparison Panel -->
+    <div class="comparison">
+      <h2>⚖️ Algorithm Comparison</h2>
+      <button onclick="compareAll()">Compare All Algorithms</button>
+      
+      <div class="comparison-grid" id="comparisonResults" style="display: none;">
+        <div class="comparison-card">
+          <h3>Original</h3>
+          <div class="stat-row">
+            <span class="stat-label">Size:</span>
+            <span class="stat-value" id="cmp-original">-</span>
+          </div>
+        </div>
+        <div class="comparison-card" id="card-gzip">
+          <h3>Gzip</h3>
+          <div class="stat-row">
+            <span class="stat-label">Size:</span>
+            <span class="stat-value" id="cmp-gzip-size">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Saved:</span>
+            <span class="stat-value" id="cmp-gzip-ratio">-</span>
+          </div>
+        </div>
+        <div class="comparison-card" id="card-deflate">
+          <h3>Deflate</h3>
+          <div class="stat-row">
+            <span class="stat-label">Size:</span>
+            <span class="stat-value" id="cmp-deflate-size">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Saved:</span>
+            <span class="stat-value" id="cmp-deflate-ratio">-</span>
+          </div>
+        </div>
+        <div class="comparison-card" id="card-zstd">
+          <h3>Zstd</h3>
+          <div class="stat-row">
+            <span class="stat-label">Size:</span>
+            <span class="stat-value" id="cmp-zstd-size">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Saved:</span>
+            <span class="stat-value" id="cmp-zstd-ratio">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const api = new Proxy({}, {
+      get: (_, method) => async (...args) => {
+        const res = await fetch('/rpc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ method, args })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        return data.result;
+      }
+    });
+
+    let currentAlgorithm = 'gzip';
+
+    async function compressGzip() {
+      const text = document.getElementById('input').value;
+      if (!text) return alert('Please enter some text');
+      
+      try {
+        const result = await api.gzipCompress(text);
+        displayCompressionResult(result, 'gzip');
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function compressDeflate() {
+      const text = document.getElementById('input').value;
+      if (!text) return alert('Please enter some text');
+      
+      try {
+        const result = await api.deflateCompress(text);
+        displayCompressionResult(result, 'deflate');
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function compressZstd() {
+      const text = document.getElementById('input').value;
+      if (!text) return alert('Please enter some text');
+      
+      const level = parseInt(document.getElementById('zstdLevel').value);
+      
+      try {
+        const result = await api.zstdCompress(text, level);
+        displayCompressionResult(result, `zstd (level ${result.level})`);
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function compressZstdSync() {
+      const text = document.getElementById('input').value;
+      if (!text) return alert('Please enter some text');
+      
+      const level = parseInt(document.getElementById('zstdLevel').value);
+      
+      try {
+        const result = await api.zstdCompressSync(text, level);
+        displayCompressionResult(result, `zstd sync (level ${result.level})`);
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    function displayCompressionResult(result, algorithm) {
+      document.getElementById('output').value = result.base64;
+      document.getElementById('origSize').textContent = `${result.originalSize} bytes`;
+      document.getElementById('compSize').textContent = `${result.compressedSize} bytes`;
+      document.getElementById('ratio').textContent = result.ratio;
+      document.getElementById('algorithm').textContent = algorithm;
+      document.getElementById('compressStats').style.display = 'block';
+      document.getElementById('decompressStats').style.display = 'none';
+      currentAlgorithm = algorithm.split(' ')[0];
+    }
+
+    async function decompress() {
+      const base64 = document.getElementById('output').value;
+      if (!base64) return alert('No compressed data to decompress');
+      
+      try {
+        let result;
+        if (currentAlgorithm === 'gzip') {
+          result = await api.gzipDecompress(base64);
+        } else if (currentAlgorithm === 'deflate') {
+          result = await api.deflateDecompress(base64);
+        } else if (currentAlgorithm === 'zstd') {
+          result = await api.zstdDecompress(base64);
+        }
+        
+        document.getElementById('input').value = result;
+        document.getElementById('decompSize').textContent = `${result.length} bytes`;
+        document.getElementById('status').textContent = '✓ Success';
+        document.getElementById('decompressStats').style.display = 'block';
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function compareAll() {
+      const text = document.getElementById('input').value;
+      if (!text) return alert('Please enter some text');
+      
+      try {
+        const result = await api.compareCompression(text);
+        
+        document.getElementById('cmp-original').textContent = `${result.original} bytes`;
+        document.getElementById('cmp-gzip-size').textContent = `${result.gzip.size} bytes`;
+        document.getElementById('cmp-gzip-ratio').textContent = result.gzip.ratio;
+        document.getElementById('cmp-deflate-size').textContent = `${result.deflate.size} bytes`;
+        document.getElementById('cmp-deflate-ratio').textContent = result.deflate.ratio;
+        document.getElementById('cmp-zstd-size').textContent = `${result.zstd.size} bytes`;
+        document.getElementById('cmp-zstd-ratio').textContent = result.zstd.ratio;
+        
+        // Highlight winner
+        ['gzip', 'deflate', 'zstd'].forEach(alg => {
+          const card = document.getElementById(`card-${alg}`);
+          if (alg === result.winner) {
+            card.classList.add('winner');
+          } else {
+            card.classList.remove('winner');
+          }
+        });
+        
+        document.getElementById('comparisonResults').style.display = 'grid';
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    function copyOutput() {
+      const output = document.getElementById('output');
+      output.select();
+      document.execCommand('copy');
+      alert('Copied to clipboard!');
+    }
+
+    function clearAll() {
+      document.getElementById('input').value = '';
+      document.getElementById('output').value = '';
+      document.getElementById('compressStats').style.display = 'none';
+      document.getElementById('decompressStats').style.display = 'none';
+      document.getElementById('comparisonResults').style.display = 'none';
+    }
+  </script>
+</body>
+</html>

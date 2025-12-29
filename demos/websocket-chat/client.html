@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Chat - Bun</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      background: #f2f2f7;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      width: 900px;
+      height: 600px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      padding: 20px 24px;
+      background: #007AFF;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #FF3B30;
+    }
+    .status-dot.connected {
+      background: #34C759;
+    }
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 200px;
+      background: #f2f2f7;
+      border-right: 0.5px solid #e5e5ea;
+      padding: 16px;
+    }
+    .user-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .user-item {
+      padding: 8px 12px;
+      margin: 4px 0;
+      background: white;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .message {
+      display: flex;
+      flex-direction: column;
+      max-width: 70%;
+    }
+    .message.own {
+      align-self: flex-end;
+    }
+    .message.system {
+      align-self: center;
+      max-width: 100%;
+    }
+    .message-header {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+    .message-username {
+      font-weight: 600;
+      color: #007AFF;
+    }
+    .message.own .message-username {
+      color: #007AFF;
+    }
+    .message-time {
+      color: #8E8E93;
+    }
+    .message-content {
+      padding: 12px 16px;
+      background: #f2f2f7;
+      border-radius: 18px;
+      word-wrap: break-word;
+      font-size: 17px;
+    }
+    .message.own .message-content {
+      background: #007AFF;
+      color: white;
+    }
+    .message.system .message-content {
+      background: #FF9500;
+      color: white;
+      text-align: center;
+      font-size: 15px;
+      border-radius: 20px;
+    }
+    .input-area {
+      padding: 16px 20px;
+      border-top: 0.5px solid #e5e5ea;
+      display: flex;
+      gap: 12px;
+      background: #f2f2f7;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 14px;
+      border: 1px solid #e5e5ea;
+      border-radius: 20px;
+      font-size: 17px;
+      font-family: inherit;
+      background: white;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #007AFF;
+    }
+    button {
+      padding: 14px 28px;
+      background: #007AFF;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:hover {
+      background: #0051D5;
+      transform: scale(0.98);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    button:disabled {
+      background: #e5e5ea;
+      color: #8E8E93;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .login-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+    }
+    .login-box {
+      background: white;
+      padding: 32px;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      width: 400px;
+    }
+    .login-box h2 {
+      margin-top: 0;
+      color: #1d1d1f;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+    .login-box input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      font-size: 17px;
+      margin: 16px 0;
+      background: #f2f2f7;
+      font-family: inherit;
+    }
+    .login-box button {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="loginScreen" class="login-screen">
+    <div class="login-box">
+      <h2>💬 Join Chat</h2>
+      <p>Enter your username to start chatting</p>
+      <input type="text" id="usernameInput" placeholder="Your username..." maxlength="20" />
+      <button onclick="connect()">Join Chat</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <header>
+      <h1>💬 WebSocket Chat</h1>
+      <div class="status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Disconnected</span>
+      </div>
+    </header>
+
+    <div class="main">
+      <div class="sidebar">
+        <h3 style="margin-top: 0; font-size: 1rem;">Online Users</h3>
+        <ul id="userList" class="user-list">
+          <li class="user-item">No users</li>
+        </ul>
+      </div>
+
+      <div class="chat-area">
+        <div id="messages" class="messages">
+          <div class="message system">
+            <div class="message-content">Welcome! Enter your username to join.</div>
+          </div>
+        </div>
+
+        <div class="input-area">
+          <input 
+            type="text" 
+            id="messageInput" 
+            placeholder="Type a message..." 
+            disabled
+            onkeypress="if(event.key==='Enter') sendMessage()"
+          />
+          <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let ws = null;
+    let username = '';
+
+    function connect() {
+      const input = document.getElementById('usernameInput');
+      username = input.value.trim();
+      
+      if (!username) {
+        alert('Please enter a username');
+        return;
+      }
+      
+      // Connect to WebSocket
+      ws = new WebSocket(`ws://${window.location.host}/ws?username=${encodeURIComponent(username)}`);
+      
+      ws.onopen = () => {
+        console.log('Connected to chat');
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('messageInput').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        updateStatus(true);
+      };
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleMessage(data);
+      };
+      
+      ws.onclose = () => {
+        console.log('Disconnected from chat');
+        updateStatus(false);
+        document.getElementById('messageInput').disabled = true;
+        document.getElementById('sendBtn').disabled = true;
+        
+        addSystemMessage('Disconnected from server');
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        addSystemMessage('Connection error');
+      };
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      
+      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+      
+      ws.send(text);
+      input.value = '';
+    }
+
+    function handleMessage(data) {
+      switch (data.type) {
+        case 'message':
+          addChatMessage(data.username, data.text, data.timestamp, data.username === username);
+          break;
+        case 'join':
+        case 'leave':
+          addSystemMessage(data.text);
+          break;
+        case 'userlist':
+          updateUserList(data.users);
+          break;
+      }
+    }
+
+    function addChatMessage(user, text, timestamp, isOwn) {
+      const messages = document.getElementById('messages');
+      const time = new Date(timestamp).toLocaleTimeString();
+      
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${isOwn ? 'own' : ''}`;
+      messageDiv.innerHTML = `
+        <div class="message-header">
+          <span class="message-username">${user}</span>
+          <span class="message-time">${time}</span>
+        </div>
+        <div class="message-content">${escapeHtml(text)}</div>
+      `;
+      
+      messages.appendChild(messageDiv);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function addSystemMessage(text) {
+      const messages = document.getElementById('messages');
+      
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'message system';
+      messageDiv.innerHTML = `<div class="message-content">${escapeHtml(text)}</div>`;
+      
+      messages.appendChild(messageDiv);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function updateUserList(users) {
+      const list = document.getElementById('userList');
+      
+      if (users.length === 0) {
+        list.innerHTML = '<li class="user-item">No users</li>';
+        return;
+      }
+      
+      list.innerHTML = users.map(user => 
+        `<li class="user-item">${user === username ? '👤 ' : ''}${user}</li>`
+      ).join('');
+    }
+
+    function updateStatus(connected) {
+      const dot = document.getElementById('statusDot');
+      const text = document.getElementById('statusText');
+      
+      if (connected) {
+        dot.classList.add('connected');
+        text.textContent = 'Connected';
+      } else {
+        dot.classList.remove('connected');
+        text.textContent = 'Disconnected';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Focus username input on load
+    document.getElementById('usernameInput').focus();
+  </script>
+</body>
+</html>
